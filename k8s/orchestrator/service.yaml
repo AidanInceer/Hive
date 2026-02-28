@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hive-orchestrator
+  namespace: hive
+spec:
+  selector:
+    app: hive-orchestrator
+  type: NodePort
+  ports:
+    - port: 9000
+      targetPort: 9000
+      nodePort: 30800

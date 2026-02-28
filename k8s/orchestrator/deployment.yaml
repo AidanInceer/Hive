@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hive-orchestrator
+  namespace: hive
+  labels:
+    app: hive-orchestrator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hive-orchestrator
+  template:
+    metadata:
+      labels:
+        app: hive-orchestrator
+    spec:
+      containers:
+        - name: orchestrator
+          image: orchestrator-image:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 9000
+          env:
+            - name: LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hive-secret
+                  key: LLM_API_KEY
+          envFrom:
+            - configMapRef:
+                name: hive-config
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"

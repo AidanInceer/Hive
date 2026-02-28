@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-architect
+  namespace: hive
+  labels:
+    app: agent-architect
+    hive/role: architect
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent-architect
+  template:
+    metadata:
+      labels:
+        app: agent-architect
+        hive/role: architect
+    spec:
+      containers:
+        - name: agent
+          image: agent-image:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          env:
+            - name: AGENT_ROLE
+              value: "architect"
+            - name: LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hive-secret
+                  key: LLM_API_KEY
+          envFrom:
+            - configMapRef:
+                name: hive-config
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-architect
+  namespace: hive
+spec:
+  selector:
+    app: agent-architect
+  ports:
+    - port: 8000
+      targetPort: 8000
+  type: ClusterIP
