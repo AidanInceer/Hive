@@ -23,7 +23,7 @@ COPY --from=deps /usr/local/lib/python3.12 /usr/local/lib/python3.12
 COPY --from=deps /usr/local/bin /usr/local/bin
 
 # Copy application source
-COPY agent.py .
+COPY app/ app/
 
 # ── Environment variables (overridable at `docker run` time) ───────────────────
 # AGENT_ROLE controls the agent's personality / system prompt.
@@ -35,7 +35,7 @@ ENV AGENT_ROLE=default
 #   For remote APIs, inject at runtime: docker run -e LLM_API_KEY=sk-...
 #   Never hardcode secret values here.
 ENV LLM_BASE_URL="http://host.docker.internal:11434/v1"
-ENV LLM_MODEL="qwen3-coder-next:latest"
+ENV LLM_MODEL="qwen2.5-coder:7b"
 
 # Tuning knobs
 ENV MAX_TOKENS=4096
@@ -50,4 +50,4 @@ RUN adduser --disabled-password --no-create-home --gecos "" hiveuser \
 USER hiveuser
 
 # ── Launch ─────────────────────────────────────────────────────────────────────
-CMD ["uvicorn", "agent:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
