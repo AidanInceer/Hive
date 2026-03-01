@@ -18,10 +18,10 @@ WORKDIR /app
 COPY --from=deps /usr/local/lib/python3.12 /usr/local/lib/python3.12
 COPY --from=deps /usr/local/bin /usr/local/bin
 
-COPY orchestrator.py .
+COPY app/ app/
 
 ENV LLM_BASE_URL="http://host.docker.internal:11434/v1"
-ENV LLM_MODEL="qwen3-coder-next:latest"
+ENV LLM_MODEL="qwen2.5-coder:7b"
 ENV MAX_TOKENS=4096
 ENV TEMPERATURE=0.6
 ENV AGENT_TIMEOUT=120
@@ -32,4 +32,4 @@ RUN adduser --disabled-password --no-create-home --gecos "" hiveuser \
  && chown -R hiveuser /app
 USER hiveuser
 
-CMD ["uvicorn", "orchestrator:app", "--host", "0.0.0.0", "--port", "9000", "--workers", "1"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "9000", "--workers", "1"]

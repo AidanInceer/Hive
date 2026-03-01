@@ -1,18 +1,63 @@
-.env
+# ── Python ──────────────────────────────────────────────────────────────────────
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
 .venv/
 venv/
+env/
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-dist/
-build/
-*.egg-info/
+.coverage
+htmlcov/
+.tox/
+.nox/
 
-# Go CLI binary
+# ── Go ──────────────────────────────────────────────────────────────────────────
 hive.exe
 hive
-
-# Go build cache
+cli/cli
 cli/vendor/
+*.test
+*.out
+coverage.txt
+
+# ── Docker ──────────────────────────────────────────────────────────────────────
+*.tar
+docker-compose.override.yml
+
+# ── Kubernetes ──────────────────────────────────────────────────────────────────
+kubeconfig
+*.local.yaml
+k8s/**/*-local.*
+
+# ── Secrets & env ───────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ── IDE / Editor ────────────────────────────────────────────────────────────────
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── OS ──────────────────────────────────────────────────────────────────────────
+*.log
+*.tmp
+*.bak
