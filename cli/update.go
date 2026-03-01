@@ -109,6 +109,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.addEvent(fmt.Sprintf("Save failed: %v", msg.err))
 		return m, nil
 
+	// ── Orchestrator info (/agents, /config) ────────────────────────────────
+	case hiveInfoMsg:
+		m.addEvent(fmt.Sprintf("Model: %s  Version: %s", msg.model, msg.version))
+		m.addEvent(fmt.Sprintf("Agents: %s", strings.Join(msg.agents, ", ")))
+		return m, nil
+
+	case hiveInfoErrMsg:
+		m.addEvent(fmt.Sprintf("Could not fetch info: %v", msg.err))
+		return m, nil
+
 	// ── Spinner tick ───────────────────────────────────────────────────────
 	case spinner.TickMsg:
 		var cmd tea.Cmd
@@ -269,6 +279,10 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if task == "" {
 			return m, nil
 		}
+		// Slash commands are dispatched without submitting as a task.
+		if strings.HasPrefix(task, "/") {
+			return m.handleCommand(task)
+		}
 		m.task = task
 		m.phase = phaseConnecting
 		m.startTime = time.Now()
@@ -280,6 +294,30 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.taskInput, cmd = m.taskInput.Update(msg)
 		return m, cmd
+	}
+}
+
+// handleCommand interprets a "/" slash command typed in the input phase.
+func (m model) handleCommand(input string) (tea.Model, tea.Cmd) {
+	m.taskInput.Reset()
+	parts := strings.Fields(strings.ToLower(input))
+	if len(parts) == 0 {
+		return m, nil
+	}
+	switch parts[0] {
+	case "/model":
+		m.phase = phaseModelSelect
+		m.modelFilter.SetValue("")
+		m.modelFilter.Focus()
+		return m, tea.Batch(loadModelsCmd(), textinput.Blink)
+	case "/agents", "/config":
+		return m, fetchHiveInfoCmd(m.hiveURL)
+	case "/help":
+		m.addEvent("Commands: /model  /agents  /config  /help")
+		return m, nil
+	default:
+		m.addEvent(fmt.Sprintf("Unknown command: %s  (try /help)", parts[0]))
+		return m, nil
 	}
 }
 
