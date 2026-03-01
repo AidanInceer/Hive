@@ -15,15 +15,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// startStream opens an SSE connection to the orchestrator's /chat/stream endpoint.
-// files is an optional map of {path: content} to send alongside the task.
-func startStream(url, task string, files map[string]string) tea.Cmd {
+// ── SSE streaming helpers ──────────────────────────────────────────────────────
+
+// startStream initiates an SSE connection to the orchestrator /chat/stream endpoint.
+func startStream(url, task string) tea.Cmd {
 	return func() tea.Msg {
-		body := map[string]interface{}{"message": task}
-		if len(files) > 0 {
-			body["files"] = files
-		}
-		payload, _ := json.Marshal(body)
+		payload, _ := json.Marshal(map[string]string{"message": task})
 		req, err := http.NewRequest("POST", url+"/chat/stream", bytes.NewReader(payload))
 		if err != nil {
 			return streamErrMsg{err}
@@ -37,9 +34,9 @@ func startStream(url, task string, files map[string]string) tea.Cmd {
 			return streamErrMsg{fmt.Errorf("connection failed: %w", err)}
 		}
 		if resp.StatusCode != http.StatusOK {
-			respBody, _ := io.ReadAll(resp.Body)
+			body, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
-			return streamErrMsg{fmt.Errorf("server %d: %s", resp.StatusCode, string(respBody))}
+			return streamErrMsg{fmt.Errorf("server %d: %s", resp.StatusCode, string(body))}
 		}
 		return streamStartedMsg{
 			reader: bufio.NewReaderSize(resp.Body, 32*1024),
@@ -48,7 +45,7 @@ func startStream(url, task string, files map[string]string) tea.Cmd {
 	}
 }
 
-// nextSSEEvent reads the next SSE event from the stream.
+// nextSSEEvent reads the next Server-Sent Event from the stream.
 func nextSSEEvent(reader *bufio.Reader) tea.Cmd {
 	return func() tea.Msg {
 		var event, data string
@@ -81,7 +78,7 @@ func nextSSEEvent(reader *bufio.Reader) tea.Cmd {
 	}
 }
 
-// saveFile writes the task result to a markdown file.
+// saveFile writes the task result to a timestamped Markdown file.
 func saveFile(cwd, task, result string, agents []string) tea.Cmd {
 	return func() tea.Msg {
 		ts := time.Now().Format("2006-01-02-150405")

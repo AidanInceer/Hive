@@ -97,18 +97,6 @@ type streamErrMsg struct{ err error }
 type fileSavedMsg struct{ path string }
 type fileSaveErrMsg struct{ err error }
 
-// Config / agents
-type configDataMsg struct{ data map[string]string }
-type configErrMsg struct{ err error }
-type configSetOKMsg struct{ key, value string }
-type configSetErrMsg struct{ err error }
-type agentsListMsg struct{ agents []string }
-type agentsErrMsg struct{ err error }
-
-// File changes
-type filesAppliedMsg struct{ paths []string }
-type filesApplyErrMsg struct{ err error }
-
 // ── Tea commands ───────────────────────────────────────────────────────────────
 
 func loadModelsCmd() tea.Cmd {

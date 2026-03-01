@@ -1,6 +1,10 @@
 package main
 
-import "os"
+import (
+	"os"
+)
+
+// ── Configuration ──────────────────────────────────────────────────────────────
 
 const (
 	defaultURL  = "http://localhost:30800"
@@ -10,6 +14,7 @@ const (
 	k8sSvcPort  = "9000"
 )
 
+// envOr returns the value of an environment variable, or a fallback.
 func envOr(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v

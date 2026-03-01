@@ -49,7 +49,7 @@ func (m model) View() string {
 func (m model) renderModelSelect(b *strings.Builder, w int) {
 	var content strings.Builder
 
-	if m.activeModel != "" && m.activeModel != "default" {
+	if m.activeModel != "" {
 		content.WriteString(fmt.Sprintf("Active: %s\n\n", accentStyle.Render(m.activeModel)))
 	}
 	content.WriteString(accentStyle.Render("Local Models") + "  " + m.modelFilter.View() + "\n\n")
@@ -97,7 +97,7 @@ func (m model) renderModelSelect(b *strings.Builder, w int) {
 	b.WriteString("\n")
 	b.WriteString(center(panel, w))
 	b.WriteString("\n\n")
-	b.WriteString(center(helpStyle.Render("↑/↓ navigate │ Enter select │ [p]ull custom │ Esc back │ Ctrl+C quit"), w))
+	b.WriteString(center(helpStyle.Render("↑/↓ navigate │ Enter select │ [p]ull custom │ Tab skip │ Ctrl+C quit"), w))
 	b.WriteString("\n")
 }
 
@@ -117,41 +117,25 @@ func (m model) renderModelPull(b *strings.Builder, w int) {
 func (m model) renderInput(b *strings.Builder, w int) {
 	var content strings.Builder
 
-	modelLabel := m.activeModel
-	if modelLabel == "" {
-		modelLabel = "default"
+	if m.activeModel != "" {
+		content.WriteString(subtleStyle.Render("Model: ") + accentStyle.Render(m.activeModel) + "\n\n")
 	}
-	content.WriteString(subtleStyle.Render("Model: ") + accentStyle.Render(modelLabel) + "\n")
-
-	if len(m.attachedFiles) > 0 {
-		content.WriteString(subtleStyle.Render(fmt.Sprintf("📎 %d file(s) attached", len(m.attachedFiles))) + "\n")
-	}
-
-	content.WriteString("\n")
 	content.WriteString(accentStyle.Render("What can I help you with?") + "\n\n")
 	content.WriteString(m.taskInput.View())
 
 	panelW := min(w-4, 72)
 	panel := boxStyle.Width(panelW).Render(content.String())
 
-	// Vertically centre the input panel in available space.
-	usedH := lipgloss.Height(panel) + 6
+	// Vertically center the input panel in available space.
+	usedH := lipgloss.Height(panel) + 6 // header + hints + padding
 	padTop := (m.height - usedH) / 3
 	if padTop < 1 {
 		padTop = 1
 	}
 	b.WriteString(strings.Repeat("\n", padTop))
 	b.WriteString(center(panel, w))
-	b.WriteString("\n")
-
-	// Event log (shows command results)
-	if len(m.events) > 0 {
-		b.WriteString("\n")
-		b.WriteString(m.eventLogView())
-	}
-
-	b.WriteString("\n")
-	b.WriteString(center(helpStyle.Render("Enter submit │ /help commands │ Alt+Enter new line │ Ctrl+C quit"), w))
+	b.WriteString("\n\n")
+	b.WriteString(center(helpStyle.Render("Enter submit │ Alt+Enter new line │ Ctrl+C quit"), w))
 	b.WriteString("\n")
 }
 
@@ -183,18 +167,11 @@ func (m model) renderResult(b *strings.Builder, w int) {
 	b.WriteString(center(borderColor.Render(strings.Repeat("─", min(w-4, 80))), w))
 	b.WriteString("\n")
 
-	// Build hints
-	hints := []string{}
 	saveHint := "[s]ave"
 	if m.saved != "" {
 		saveHint = subtleStyle.Render("[saved]")
 	}
-	hints = append(hints, saveHint)
-	if len(m.fileChanges) > 0 {
-		hints = append(hints, warnStyle.Render(fmt.Sprintf("[a]pply %d file change(s)", len(m.fileChanges))))
-	}
-	hints = append(hints, "[n]ew task", "[q]uit", "↑/↓ scroll")
-	b.WriteString(center(helpStyle.Render(strings.Join(hints, " │ ")), w))
+	b.WriteString(center(helpStyle.Render(fmt.Sprintf("%s │ [n]ew task │ [q]uit │ ↑/↓ scroll", saveHint)), w))
 	b.WriteString("\n")
 }
 

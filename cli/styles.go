@@ -18,7 +18,7 @@ import (
 //   Cream:   #FFF8E7  (256-color 230)
 
 var (
-	// Primary accent — warm honey yellow.
+	// Primary accent — warm honey yellow for highlights.
 	accentStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
 
 	// Title badge — bold cream on amber background.
@@ -52,9 +52,6 @@ var (
 	// Help / keybind hints.
 	helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("242"))
 
-	// Slash commands in help text.
-	cmdStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Bold(true)
-
 	// Box style — rounded border in amber, used for panels.
 	boxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
@@ -73,7 +70,7 @@ func ruler(w int) string {
 }
 
 // center pads every line of s so the block appears horizontally centred within
-// width w. Works correctly for multi-line strings (e.g. boxed panels).
+// width w.  Works correctly for multi-line strings (e.g. boxed panels).
 func center(s string, w int) string {
 	return lipgloss.PlaceHorizontal(w, lipgloss.Center, s)
 }

@@ -42,11 +42,6 @@ type model struct {
 	agentResults map[string]string
 	result       string
 
-	// Attached files for task context
-	attachedFiles map[string]string
-	// File changes parsed from result
-	fileChanges map[string]string
-
 	events []string
 	err    error
 
@@ -61,7 +56,7 @@ type model struct {
 
 func newModel(task, hiveURL, cwd, presetModel string) model {
 	ta := textarea.New()
-	ta.Placeholder = "Describe your task... (type /help for commands)"
+	ta.Placeholder = "Describe your task..."
 	ta.CharLimit = 2000
 	ta.SetWidth(60)
 	ta.SetHeight(5)
@@ -83,15 +78,14 @@ func newModel(task, hiveURL, cwd, presetModel string) model {
 	sp.Style = accentStyle
 
 	m := model{
-		hiveURL:       hiveURL,
-		cwd:           cwd,
-		taskInput:     ta,
-		modelFilter:   mf,
-		pullInput:     pi,
-		spin:          sp,
-		agentResults:  make(map[string]string),
-		attachedFiles: make(map[string]string),
-		activeModel:   presetModel,
+		hiveURL:      hiveURL,
+		cwd:          cwd,
+		taskInput:    ta,
+		modelFilter:  mf,
+		pullInput:    pi,
+		spin:         sp,
+		agentResults: make(map[string]string),
+		activeModel:  presetModel,
 	}
 
 	if presetModel != "" && task != "" {
@@ -106,10 +100,8 @@ func newModel(task, hiveURL, cwd, presetModel string) model {
 		m.phase = phaseConnecting
 		m.startTime = time.Now()
 	} else {
-		// Default: start at input phase (use /model to select)
-		m.phase = phaseInput
-		m.activeModel = "default"
-		m.taskInput.Focus()
+		m.phase = phaseModelSelect
+		m.modelFilter.Focus()
 	}
 	return m
 }
@@ -141,7 +133,7 @@ func (m model) Init() tea.Cmd {
 	case phaseInput:
 		cmds = append(cmds, textinput.Blink)
 	default:
-		cmds = append(cmds, startStream(m.hiveURL, m.task, m.attachedFiles))
+		cmds = append(cmds, startStream(m.hiveURL, m.task))
 	}
 	return tea.Batch(cmds...)
 }

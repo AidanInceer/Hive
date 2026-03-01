@@ -16,19 +16,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+
+	// ── Window resize ──────────────────────────────────────────────────────
 	case tea.WindowSizeMsg:
 		return m.handleResize(msg)
+
+	// ── Keyboard ───────────────────────────────────────────────────────────
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 
-	// ── Model selection ────────────────────────────────────────────────────
+	// ── Models loaded ──────────────────────────────────────────────────────
 	case modelsLoadedMsg:
 		m.localModels = msg.models
 		m.addEvent(fmt.Sprintf("Found %d local model(s)", len(msg.models)))
 		return m, nil
+
 	case modelsErrMsg:
 		m.addEvent(fmt.Sprintf("Ollama: %v", msg.err))
 		return m, nil
+
+	// ── Pull progress ──────────────────────────────────────────────────────
 	case pullProgressMsg:
 		if msg.done {
 			m.pullStatus = "Pull complete!"
@@ -37,56 +44,39 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.pullStatus = msg.status
 		return m, nil
+
 	case pullErrMsg:
 		m.phase = phaseError
 		m.err = fmt.Errorf("model pull failed: %w", msg.err)
 		m.addEvent(fmt.Sprintf("Pull error: %v", msg.err))
 		return m, nil
+
+	// ── Model set on orchestrator ──────────────────────────────────────────
 	case modelSetMsg:
 		m.activeModel = msg.name
 		m.addEvent(fmt.Sprintf("Orchestrator using model: %s", msg.name))
 		m.phase = phaseInput
 		cmd := m.taskInput.Focus()
 		return m, cmd
+
 	case modelSetErrMsg:
-		m.addEvent(fmt.Sprintf("Warning: could not set model: %v", msg.err))
+		m.addEvent(fmt.Sprintf("Warning: could not set model on orchestrator: %v", msg.err))
 		m.phase = phaseInput
 		cmd := m.taskInput.Focus()
 		return m, cmd
 
-	// ── Config / agents ────────────────────────────────────────────────────
-	case configDataMsg:
-		for k, v := range msg.data {
-			m.addEvent(fmt.Sprintf("  %s = %s", k, v))
-		}
-		return m, nil
-	case configErrMsg:
-		m.addEvent(fmt.Sprintf("Config error: %v", msg.err))
-		return m, nil
-	case configSetOKMsg:
-		m.addEvent(fmt.Sprintf("Config updated: %s = %s", msg.key, msg.value))
-		if msg.key == "model" {
-			m.activeModel = msg.value
-		}
-		return m, nil
-	case configSetErrMsg:
-		m.addEvent(fmt.Sprintf("Config update failed: %v", msg.err))
-		return m, nil
-	case agentsListMsg:
-		m.addEvent(fmt.Sprintf("Available agents: %s", strings.Join(msg.agents, ", ")))
-		return m, nil
-	case agentsErrMsg:
-		m.addEvent(fmt.Sprintf("Agents error: %v", msg.err))
-		return m, nil
-
-	// ── SSE streaming ──────────────────────────────────────────────────────
+	// ── SSE stream started ─────────────────────────────────────────────────
 	case streamStartedMsg:
 		m.sseReader = msg.reader
 		m.sseBody = msg.body
 		m.addEvent("Connected to orchestrator")
 		return m, nextSSEEvent(m.sseReader)
+
+	// ── SSE event received ─────────────────────────────────────────────────
 	case sseEventMsg:
 		return m.handleSSE(msg)
+
+	// ── Stream ended / error ───────────────────────────────────────────────
 	case streamDoneMsg:
 		if m.phase != phaseResult {
 			m.phase = phaseError
@@ -98,6 +88,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.sseBody = nil
 		}
 		return m, nil
+
 	case streamErrMsg:
 		m.phase = phaseError
 		m.err = msg.err
@@ -108,29 +99,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// ── File operations ────────────────────────────────────────────────────
+	// ── File saved ─────────────────────────────────────────────────────────
 	case fileSavedMsg:
 		m.saved = msg.path
 		m.addEvent(fmt.Sprintf("Saved to %s", msg.path))
 		return m, nil
+
 	case fileSaveErrMsg:
 		m.addEvent(fmt.Sprintf("Save failed: %v", msg.err))
 		return m, nil
-	case filesAppliedMsg:
-		m.addEvent(fmt.Sprintf("Applied %d file(s): %s", len(msg.paths), strings.Join(msg.paths, ", ")))
-		return m, nil
-	case filesApplyErrMsg:
-		m.addEvent(fmt.Sprintf("Apply failed: %v", msg.err))
-		return m, nil
 
-	// ── Spinner ────────────────────────────────────────────────────────────
+	// ── Spinner tick ───────────────────────────────────────────────────────
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		m.spin, cmd = m.spin.Update(msg)
 		cmds = append(cmds, cmd)
 	}
 
-	// Sub-component updates (for messages not handled above, e.g. cursor blink).
+	// Update sub-components
 	if m.phase == phaseModelSelect && !m.showPullInput {
 		var cmd tea.Cmd
 		m.modelFilter, cmd = m.modelFilter.Update(msg)
@@ -150,7 +136,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// ── Resize ─────────────────────────────────────────────────────────────────────
+// ── Resize handler ─────────────────────────────────────────────────────────────
 
 func (m model) handleResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	m.width = msg.Width
@@ -174,7 +160,7 @@ func (m model) handleResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// ── Key dispatcher ─────────────────────────────────────────────────────────────
+// ── Key handler ────────────────────────────────────────────────────────────────
 
 func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.phase {
@@ -201,8 +187,6 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// ── Model selection keys ───────────────────────────────────────────────────────
-
 func (m model) handleKeyModelSelect(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.showPullInput {
 		switch msg.String() {
@@ -215,7 +199,7 @@ func (m model) handleKeyModelSelect(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.phase = phaseModelPull
 			m.pullStatus = fmt.Sprintf("Pulling %s...", name)
 			m.activeModel = name
-			m.addEvent(fmt.Sprintf("Pulling model %s...", name))
+			m.addEvent(fmt.Sprintf("Pulling model %s from Ollama...", name))
 			return m, pullModelCmd(name)
 		case "esc":
 			m.showPullInput = false
@@ -260,13 +244,9 @@ func (m model) handleKeyModelSelect(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.phase = phaseModelPull
 			m.pullStatus = fmt.Sprintf("Pulling %s...", name)
 			m.activeModel = name
-			m.addEvent(fmt.Sprintf("Pulling model %s...", name))
+			m.addEvent(fmt.Sprintf("Pulling model %s from Ollama...", name))
 			return m, pullModelCmd(name)
 		}
-	case "esc":
-		m.phase = phaseInput
-		cmd := m.taskInput.Focus()
-		return m, cmd
 	case "tab":
 		m.phase = phaseInput
 		cmd := m.taskInput.Focus()
@@ -282,44 +262,18 @@ func (m model) handleKeyModelSelect(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// ── Input keys + slash commands ────────────────────────────────────────────────
-
 func (m model) handleKeyInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
-		text := strings.TrimSpace(m.taskInput.Value())
-		if text == "" {
+		task := strings.TrimSpace(m.taskInput.Value())
+		if task == "" {
 			return m, nil
 		}
-
-		// Slash command?
-		if strings.HasPrefix(text, "/") {
-			return m.handleSlashCommand(text)
-		}
-
-		// Regular task submission
-		m.task = text
-
-		// Auto-detect file references in the task
-		detected := detectFiles(m.cwd, text)
-		allFiles := make(map[string]string)
-		for k, v := range m.attachedFiles {
-			allFiles[k] = v
-		}
-		for k, v := range detected {
-			if _, exists := allFiles[k]; !exists {
-				allFiles[k] = v
-			}
-		}
-
+		m.task = task
 		m.phase = phaseConnecting
 		m.startTime = time.Now()
-		if len(allFiles) > 0 {
-			m.addEvent(fmt.Sprintf("Task submitted with %d file(s)", len(allFiles)))
-		} else {
-			m.addEvent("Task submitted")
-		}
-		return m, tea.Batch(startStream(m.hiveURL, m.task, allFiles), m.spin.Tick)
+		m.addEvent("Task submitted")
+		return m, tea.Batch(startStream(m.hiveURL, m.task), m.spin.Tick)
 	case "ctrl+c":
 		return m, tea.Quit
 	default:
@@ -329,103 +283,11 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func (m model) handleSlashCommand(input string) (tea.Model, tea.Cmd) {
-	parts := strings.Fields(input)
-	cmd := strings.ToLower(parts[0])
-
-	// Clear the input after processing command
-	m.taskInput.Reset()
-
-	switch cmd {
-	case "/model":
-		m.phase = phaseModelSelect
-		m.modelFilter.SetValue("")
-		m.modelFilter.Focus()
-		m.taskInput.Blur()
-		return m, tea.Batch(loadModelsCmd(), textinput.Blink)
-
-	case "/config":
-		m.addEvent("Fetching orchestrator config...")
-		return m, fetchConfigCmd(m.hiveURL)
-
-	case "/set":
-		if len(parts) < 3 {
-			m.addEvent("Usage: /set <key> <value>  (e.g. /set temperature 0.8)")
-			return m, nil
-		}
-		key := parts[1]
-		value := strings.Join(parts[2:], " ")
-		m.addEvent(fmt.Sprintf("Setting %s = %s...", key, value))
-		return m, setConfigCmd(m.hiveURL, key, value)
-
-	case "/agents":
-		m.addEvent("Fetching agent list...")
-		return m, fetchAgentsCmd(m.hiveURL)
-
-	case "/file":
-		if len(parts) < 2 {
-			m.addEvent("Usage: /file <path>  (relative to current directory)")
-			return m, nil
-		}
-		path := strings.Join(parts[1:], " ")
-		content, err := readFileFromCWD(m.cwd, path)
-		if err != nil {
-			m.addEvent(fmt.Sprintf("Cannot read %s: %v", path, err))
-			return m, nil
-		}
-		m.attachedFiles[path] = content
-		m.addEvent(fmt.Sprintf("📎 Attached %s (%d bytes)", path, len(content)))
-		return m, nil
-
-	case "/files":
-		if len(m.attachedFiles) == 0 {
-			m.addEvent("No files attached")
-		} else {
-			m.addEvent(fmt.Sprintf("Attached files (%d):", len(m.attachedFiles)))
-			for path, content := range m.attachedFiles {
-				m.addEvent(fmt.Sprintf("  📎 %s (%d bytes)", path, len(content)))
-			}
-		}
-		return m, nil
-
-	case "/clear":
-		count := len(m.attachedFiles)
-		m.attachedFiles = make(map[string]string)
-		m.addEvent(fmt.Sprintf("Cleared %d attached file(s)", count))
-		return m, nil
-
-	case "/help":
-		m.addEvent("Available commands:")
-		m.addEvent(fmt.Sprintf("  %s  — Select or change Ollama model", cmdStyle.Render("/model")))
-		m.addEvent(fmt.Sprintf("  %s — Show orchestrator configuration", cmdStyle.Render("/config")))
-		m.addEvent(fmt.Sprintf("  %s  — Update config (model, temperature, max_tokens)", cmdStyle.Render("/set <k> <v>")))
-		m.addEvent(fmt.Sprintf("  %s — List available agents", cmdStyle.Render("/agents")))
-		m.addEvent(fmt.Sprintf("  %s  — Attach a file from CWD", cmdStyle.Render("/file <path>")))
-		m.addEvent(fmt.Sprintf("  %s  — List attached files", cmdStyle.Render("/files")))
-		m.addEvent(fmt.Sprintf("  %s  — Clear attached files", cmdStyle.Render("/clear")))
-		m.addEvent(fmt.Sprintf("  %s   — Show this help", cmdStyle.Render("/help")))
-		return m, nil
-
-	case "/quit":
-		return m, tea.Quit
-
-	default:
-		m.addEvent(fmt.Sprintf("Unknown command: %s (type /help for commands)", cmd))
-		return m, nil
-	}
-}
-
-// ── Result keys ────────────────────────────────────────────────────────────────
-
 func (m model) handleKeyResult(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "s":
 		if m.saved == "" {
 			return m, saveFile(m.cwd, m.task, m.result, m.agentsUsed)
-		}
-	case "a":
-		if len(m.fileChanges) > 0 {
-			return m, applyFilesCmd(m.cwd, m.fileChanges)
 		}
 	case "n":
 		m2 := newModel("", m.hiveURL, m.cwd, m.activeModel)
@@ -442,8 +304,6 @@ func (m model) handleKeyResult(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	return m, nil
 }
-
-// ── Error keys ─────────────────────────────────────────────────────────────────
 
 func (m model) handleKeyError(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
@@ -466,6 +326,7 @@ func (m model) handleSSE(msg sseEventMsg) (tea.Model, tea.Cmd) {
 	case "routing_start":
 		m.phase = phaseRouting
 		m.addEvent("Routing task to agents...")
+
 	case "routing_complete":
 		if arr, ok := msg.data["agents"].([]interface{}); ok {
 			m.agents = make([]agentInfo, len(arr))
@@ -478,6 +339,7 @@ func (m model) handleSSE(msg sseEventMsg) (tea.Model, tea.Cmd) {
 			m.addEvent(fmt.Sprintf("Routed to %d agent(s): %s", len(arr), strings.Join(names, ", ")))
 		}
 		m.phase = phaseFanOut
+
 	case "agent_start":
 		if name, ok := msg.data["agent"].(string); ok {
 			for i := range m.agents {
@@ -487,6 +349,7 @@ func (m model) handleSSE(msg sseEventMsg) (tea.Model, tea.Cmd) {
 			}
 			m.addEvent(fmt.Sprintf("Agent %s started", name))
 		}
+
 	case "agent_complete":
 		if name, ok := msg.data["agent"].(string); ok {
 			for i := range m.agents {
@@ -496,17 +359,20 @@ func (m model) handleSSE(msg sseEventMsg) (tea.Model, tea.Cmd) {
 			}
 			preview := ""
 			if p, ok := msg.data["preview"].(string); ok && len(p) > 80 {
-				preview = " — " + p[:80] + "..."
+				preview = " -- " + p[:80] + "..."
 			} else if p, ok := msg.data["preview"].(string); ok && p != "" {
-				preview = " — " + p
+				preview = " -- " + p
 			}
 			m.addEvent(fmt.Sprintf("Agent %s complete%s", name, preview))
 		}
+
 	case "synthesis_start":
 		m.phase = phaseSynthesis
 		m.addEvent("Synthesising agent responses...")
+
 	case "synthesis_complete":
 		m.addEvent("Synthesis complete")
+
 	case "done":
 		if r, ok := msg.data["result"].(string); ok {
 			m.result = r
@@ -521,11 +387,6 @@ func (m model) handleSSE(msg sseEventMsg) (tea.Model, tea.Cmd) {
 			for k, v := range ar {
 				m.agentResults[k] = fmt.Sprint(v)
 			}
-		}
-		// Parse file changes from result
-		m.fileChanges = parseFileChanges(m.result)
-		if len(m.fileChanges) > 0 {
-			m.addEvent(fmt.Sprintf("Detected %d file change(s) in result", len(m.fileChanges)))
 		}
 		m.phase = phaseResult
 		m.vp.SetContent(m.result)

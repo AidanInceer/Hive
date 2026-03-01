@@ -9,13 +9,18 @@ import (
 	"sort"
 )
 
+// ── Ollama model helpers ───────────────────────────────────────────────────────
+// Talk directly to the Ollama HTTP API running on the host.
+
 var ollamaHost = envOr("OLLAMA_HOST", "http://localhost:11434")
 
+// ollamaModel represents a locally available model from Ollama.
 type ollamaModel struct {
 	Name string `json:"name"`
 	Size int64  `json:"size"`
 }
 
+// ollamaListModels returns locally available model names.
 func ollamaListModels() ([]ollamaModel, error) {
 	resp, err := http.Get(ollamaHost + "/api/tags")
 	if err != nil {
@@ -34,6 +39,7 @@ func ollamaListModels() ([]ollamaModel, error) {
 	return result.Models, nil
 }
 
+// ollamaPullStream starts pulling a model, returns a reader for NDJSON progress.
 func ollamaPullStream(modelName string) (io.ReadCloser, error) {
 	payload, _ := json.Marshal(map[string]interface{}{
 		"name":   modelName,
@@ -51,6 +57,7 @@ func ollamaPullStream(modelName string) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
+// setOrchestratorModel tells the orchestrator to switch models via POST /model.
 func setOrchestratorModel(hiveURL, modelName string) error {
 	payload, _ := json.Marshal(map[string]string{"model": modelName})
 	resp, err := http.Post(hiveURL+"/model", "application/json", bytes.NewReader(payload))
@@ -64,6 +71,7 @@ func setOrchestratorModel(hiveURL, modelName string) error {
 	return nil
 }
 
+// popularModels lists well-known models users can pull via number keys.
 var popularModels = []string{
 	"qwen2.5-coder:7b",
 	"qwen2.5-coder:14b",
