@@ -15,6 +15,7 @@ spec:
       labels:
         app: hive-orchestrator
     spec:
+      serviceAccountName: hive-orchestrator-sa
       containers:
         - name: orchestrator
           image: orchestrator-image:latest

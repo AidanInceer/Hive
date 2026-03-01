@@ -50,4 +50,6 @@ RUN adduser --disabled-password --no-create-home --gecos "" hiveuser \
 USER hiveuser
 
 # ── Launch ─────────────────────────────────────────────────────────────────────
-CMD ["uvicorn", "agent:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# If TASK_JSON is set the agent runs in batch mode (K8s Job) and exits.
+# Otherwise it starts the HTTP server for persistent deployment use.
+CMD ["python", "agent.py"]
