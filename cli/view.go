@@ -123,6 +123,24 @@ func (m model) renderInput(b *strings.Builder, w int) {
 	content.WriteString(accentStyle.Render("What can I help you with?") + "\n\n")
 	content.WriteString(m.taskInput.View())
 
+	// Show command palette when the user has typed a leading "/".
+	val := m.taskInput.Value()
+	if strings.HasPrefix(val, "/") {
+		type cmdEntry struct{ cmd, desc string }
+		palette := []cmdEntry{
+			{"/model", "switch LLM model"},
+			{"/agents", "list available agents"},
+			{"/config", "show orchestrator config"},
+			{"/help", "show all commands"},
+		}
+		content.WriteString("\n\n" + subtleStyle.Render("Commands:") + "\n")
+		for _, c := range palette {
+			if val == "/" || strings.HasPrefix(c.cmd, strings.ToLower(val)) {
+				content.WriteString(accentStyle.Render("  "+c.cmd) + subtleStyle.Render("  "+c.desc) + "\n")
+			}
+		}
+	}
+
 	panelW := min(w-4, 72)
 	panel := boxStyle.Width(panelW).Render(content.String())
 
@@ -135,7 +153,7 @@ func (m model) renderInput(b *strings.Builder, w int) {
 	b.WriteString(strings.Repeat("\n", padTop))
 	b.WriteString(center(panel, w))
 	b.WriteString("\n\n")
-	b.WriteString(center(helpStyle.Render("Enter submit │ Alt+Enter new line │ Ctrl+C quit"), w))
+	b.WriteString(center(helpStyle.Render("Enter submit │ Alt+Enter new line │ /commands │ Ctrl+C quit"), w))
 	b.WriteString("\n")
 }
 

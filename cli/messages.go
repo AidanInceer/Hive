@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"io"
+	"net/http"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -97,6 +98,14 @@ type streamErrMsg struct{ err error }
 type fileSavedMsg struct{ path string }
 type fileSaveErrMsg struct{ err error }
 
+// Orchestrator info (used by /agents and /config commands)
+type hiveInfoMsg struct {
+	model   string
+	version string
+	agents  []string
+}
+type hiveInfoErrMsg struct{ err error }
+
 // ── Tea commands ───────────────────────────────────────────────────────────────
 
 func loadModelsCmd() tea.Cmd {
@@ -142,5 +151,25 @@ func setModelCmd(hiveURL, name string) tea.Cmd {
 			return modelSetErrMsg{err}
 		}
 		return modelSetMsg{name}
+	}
+}
+
+// fetchHiveInfoCmd calls GET / on the orchestrator and returns metadata.
+func fetchHiveInfoCmd(hiveURL string) tea.Cmd {
+	return func() tea.Msg {
+		resp, err := http.Get(hiveURL + "/")
+		if err != nil {
+			return hiveInfoErrMsg{err}
+		}
+		defer resp.Body.Close()
+		var result struct {
+			Model   string   `json:"model"`
+			Version string   `json:"version"`
+			Agents  []string `json:"agents"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			return hiveInfoErrMsg{err}
+		}
+		return hiveInfoMsg{model: result.Model, version: result.Version, agents: result.Agents}
 	}
 }
